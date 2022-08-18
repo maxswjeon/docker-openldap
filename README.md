@@ -18,14 +18,15 @@ Suprisingly, Alpine is one of the OSs that supports latest version of OpenLDAP. 
 
 1. Replication is not supported.
 2. Config file are moved from `/container/serive/slapd/assets/config` to `/config`. Mount to `/config` to override bootstrap configs.
-3. Mountpoint of custom bootstrap ldif and schema files are changed from `/container/service/slapd/assets/config/bootstrap/schema/custom` to `/custom`.
-4. Files in `/docker-entrypoint-initdb.d` will be executed when creating the database.
-5. Data persistence folder is changed
+3. Mountpoint of custom bootstrap schema files are changed from `/container/service/slapd/assets/config/bootstrap/schema/custom` to `/custom/schema`.
+4. Mountpoint of custom bootstrap schema files are changed from `/container/service/slapd/assets/config/bootstrap/ldif/custom` to `/custom/ldif`.
+5. Files in `/docker-entrypoint-initdb.d` will be executed when creating the database.
+6. Data persistence folder is changed
    - Data Directory: `/var/lib/ldap` to `/var/lib/openldap/openldap-data`
    - Config Directory: `/etc/ldap/slapd.d` to `/etc/openldap/slapd.d`
-6. Environment variable `LDAP_TLS_BASE_DIR` is added instead of using hardcoded `/container/service/slapd/assets/certs/`
-7. Automatic Certificate generation is not supported.
-8. All the command passed to container is ignored.
+7. Environment variable `LDAP_TLS_BASE_DIR` is added instead of using hardcoded `/container/service/slapd/assets/certs/`
+8. Automatic Certificate generation is not supported.
+9. All the command passed to container is ignored.
 
 ## Configuration
 

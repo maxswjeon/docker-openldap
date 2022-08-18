@@ -237,7 +237,7 @@ if [ ! -f /.config ]; then
       fi
 
       echo "[INFO] Adding custom bootstrap ldif files..."
-      for f in $(find /config/bootstrap/ldif/custom -type f -name \*.ldif | sort); do
+      for f in $(find /custom/ldif -type f -name \*.ldif | sort); do
         ldap_add_or_modify "$f"
       done
     fi
