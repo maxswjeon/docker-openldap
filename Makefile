@@ -27,7 +27,7 @@ git-tag-version:
 	git push origin $(VERSION)
 
 run:
-	docker run --rm -v certificates:/certificates -v $(shell pwd)/dhparam:/dhparam -it --env-file .env $(NAME):$(VERSION)
+	docker run -p 389:389 -p 636:636 --rm -v certificates:/certificates -v $(shell pwd)/dhparam:/dhparam -it --env-file .env $(NAME):$(VERSION)
 
 sh:
 	docker run --rm -v certificates:/certificates -v $(shell pwd)/dhparam:/dhparam -it --env-file .env --entrypoint sh $(NAME):$(VERSION)

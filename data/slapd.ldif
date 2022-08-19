@@ -3,6 +3,7 @@ objectClass: olcGlobal
 cn: config
 olcArgsFile: /var/lib/openldap/run/slapd.args
 olcPidFile: /var/lib/openldap/run/slapd.pid
+olcLogLevel: 256
 
 dn: cn=module{0},cn=config
 objectClass: olcModuleList

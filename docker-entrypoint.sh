@@ -18,6 +18,7 @@ copy_if_exists() {
 }
 
 # Handle Default Envariables
+: "${LDAP_ORGANIZATION:="Example Inc."}"
 : "${LDAP_DOMAIN:=example.org}"
 : "${LDAP_PORT:=389}"
 : "${LDAPS_PORT:=636}"
@@ -37,7 +38,7 @@ copy_if_exists() {
 : "${LDAP_TLS_DH_PARAM_FILENAME:=dhparam.pem}"
 : "${LDAP_TLS_CA_FILENAME:=ca.crt}"
 : "${LDAP_TLS_ENFORCE:=false}"
-: "${LDAP_TLS_CIPHER_SUITE:="SECURE256:+SECURE128:-VERS-TLS-ALL:+VERS-TLS1.2:-RSA:-DHE-DSS:-CAMELLIA-128-CBC:-CAMELLIA-256-CBC"}"
+: "${LDAP_TLS_CIPHER_SUITE:="ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305:DHE-RSA-AES128-GCM-SHA256:DHE-RSA-AES256-GCM-SHA384"}"
 : "${LDAP_TLS_VERIFY_CLIENT:=demand}"
 
 : "${KEEP_EXISTING_CONFIG:=false}"
@@ -53,7 +54,7 @@ env_from_file "LDAP_READONLY_USER_PASSWORD"
 
 lower DISABLE_CHOWN
 if [ "$DISABLE_CHOWN" = "false" ]; then
-  echo "Updaing ownerships for folders"
+  echo "Updating ownerships for folders"
   chown -R openldap:openldap /var/lib/openldap -R
   chown -R openldap:openldap /etc/openldap -R
 fi
@@ -110,7 +111,9 @@ if [ ! -f /.config ]; then
     sed -i "s/{{ LDAP_BASE_DN }}/${LDAP_BASE_DN}/g" "$LDAP_ADD_OR_MODIFY_LDIF_FILE"
     sed -i "s/{{ LDAP_BACKEND }}/${LDAP_BACKEND}/g" "$LDAP_ADD_OR_MODIFY_LDIF_FILE"
     sed -i "s/{{ LDAP_DOMAIN }}/${LDAP_DOMAIN}/g" "$LDAP_ADD_OR_MODIFY_LDIF_FILE"
-
+    sed -i "s/{{ LDAP_ORGANIZATION }}/$LDAP_ORGANIZATION/g" "$LDAP_ADD_OR_MODIFY_LDIF_FILE"
+    sed -i "s/{{ LDAP_DC }}/$(echo "$LDAP_BASE_DN" | cut -d "," -f 1 | cut -d "=" -f 2)/g" "$LDAP_ADD_OR_MODIFY_LDIF_FILE"
+    
     lower LDAP_READONLY_USER
     if [ "$LDAP_READONLY_USER" = "true" ]; then
       sed -i "s|{{ LDAP_READONLY_USER_USERNAME }}|${LDAP_READONLY_USER_USERNAME}|g" "$LDAP_ADD_OR_MODIFY_LDIF_FILE"
@@ -123,6 +126,7 @@ if [ ! -f /.config ]; then
       LDAP_ADD_OR_MODIFY_LDIF_CMD=ldapadd
     fi
 
+    echo "Running $LDAP_ADD_OR_MODIFY_LDIF_CMD $LDAP_ADD_OR_MODIFY_LDIF_FILE"
     $LDAP_ADD_OR_MODIFY_LDIF_CMD -Y EXTERNAL -Q -H ldapi:/// -f "$LDAP_ADD_OR_MODIFY_LDIF_FILE" 2>&1 || $LDAP_ADD_OR_MODIFY_LDIF_CMD -h localhost -p 389 -D "cn=admin,$LDAP_BASE_DN" -w "$LDAP_ADMIN_PASSWORD" -f "$LDAP_ADD_OR_MODIFY_LDIF_FILE" 2>&1
   }
 
@@ -273,14 +277,22 @@ if [ ! -f /.config ]; then
         chmod 600 "$LDAP_TLS_DH_PARAM_PATH"
       fi
 
-      sed -i "s|{{ LDAP_TLS_CA_CRT_PATH }}|${LDAP_TLS_CA_PATH}|g"     /config/tls/tls-enable.ldif
-      sed -i "s|{{ LDAP_TLS_CRT_PATH }}|${LDAP_TLS_CERT_PATH}|g"           /config/tls/tls-enable.ldif
-      sed -i "s|{{ LDAP_TLS_KEY_PATH }}|${LDAP_TLS_KEY_PATH}|g"           /config/tls/tls-enable.ldif
-      sed -i "s|{{ LDAP_TLS_DH_PARAM_PATH }}|${LDAP_TLS_DH_PARAM_PATH}|g" /config/tls/tls-enable.ldif
+      TEMP=$(mktemp -d)
+      cp "$LDAP_TLS_CERT_PATH" "$TEMP/cert.pem"
+      cp "$LDAP_TLS_KEY_PATH" "$TEMP/key.pem"
+      cp "$LDAP_TLS_CA_PATH" "$TEMP/ca.pem"
+      cp "$LDAP_TLS_DH_PARAM_PATH" "$TEMP/dhparam"
+
+      chown -R openldap:openldap "$TEMP"
+
       sed -i "s|{{ LDAP_TLS_CIPHER_SUITE }}|${LDAP_TLS_CIPHER_SUITE}|g"   /config/tls/tls-enable.ldif
+      sed -i "s|{{ LDAP_TLS_CA_CRT_PATH }}|$TEMP/ca.pem|g"                /config/tls/tls-enable.ldif
+      sed -i "s|{{ LDAP_TLS_KEY_PATH }}|$TEMP/key.pem|g"                  /config/tls/tls-enable.ldif
+      sed -i "s|{{ LDAP_TLS_CRT_PATH }}|$TEMP/cert.pem|g"                 /config/tls/tls-enable.ldif
+      sed -i "s|{{ LDAP_TLS_DH_PARAM_PATH }}|$TEMP/dhparam|g"             /config/tls/tls-enable.ldif
       sed -i "s|{{ LDAP_TLS_VERIFY_CLIENT }}|${LDAP_TLS_VERIFY_CLIENT}|g" /config/tls/tls-enable.ldif
 
-      ldapmodify -Y EXTERNAL -Q -H ldapi:/// -f /config/tls/tls-enable.ldif 2>&1
+      ldapmodify -Y EXTERNAL -Q -H ldapi:/// -f /config/tls/tls-enable.ldif 2>&1 
 
       START_WITH_TLS=true
 
@@ -321,6 +333,17 @@ if [ ! -f /.config ]; then
       disable_replication || true
     fi
     
+    generate_base_dn
+
+    LDAP_CONFIG_PASSWORD_ENCRYPTED=$(slappasswd -s "$LDAP_CONFIG_PASSWORD")
+    LDAP_ADMIN_PASSWORD_ENCRYPTED=$(slappasswd -s "$LDAP_ADMIN_PASSWORD")
+    sed -i "s|{{ LDAP_CONFIG_PASSWORD_ENCRYPTED }}|${LDAP_CONFIG_PASSWORD_ENCRYPTED}|g" /config/admin/root-password-change.ldif
+    sed -i "s|{{ LDAP_ADMIN_PASSWORD_ENCRYPTED }}|${LDAP_ADMIN_PASSWORD_ENCRYPTED}|g"   /config/admin/root-password-change.ldif
+    sed -i "s|{{ LDAP_ADMIN_PASSWORD_ENCRYPTED }}|${LDAP_ADMIN_PASSWORD_ENCRYPTED}|g"   /config/admin/admin-password-change.ldif
+
+    ldap_add_or_modify /config/admin/root-password-change.ldif
+    ldap_add_or_modify /config/admin/admin-password-change.ldif
+
     ADMIN_PASSWORD_SET=true
   
     echo "[INFO] Stopping OpenLDAP..."
@@ -388,6 +411,5 @@ ln -sf ldap.conf /etc/openldap/ldap.conf
 
 # echo "0.0.0.0 $(hostname) $(hostname -f)" >> /etc/hosts
 
-FQDN="$(hostname -f)"
 HOST_PARAM="ldap://0.0.0.0:$LDAP_PORT ldaps://0.0.0.0:$LDAPS_PORT"
 exec slapd -h "$HOST_PARAM ldapi:///" -u openldap -g openldap -d "$LDAP_LOG_LEVEL"

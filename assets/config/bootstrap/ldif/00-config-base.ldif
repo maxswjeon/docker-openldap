@@ -1,0 +1,16 @@
+dn: {{ LDAP_BASE_DN }}
+changeType: add
+dc: {{ LDAP_DC }}
+objectClass: top
+objectClass: dcObject
+objectClass: organization
+o: {{ LDAP_ORGANIZATION }}
+
+dn: cn=admin,{{ LDAP_BASE_DN }}
+changeType: add
+cn: admin
+objectClass: simpleSecurityObject
+objectClass: organizationalRole
+userPassword: temporary
+description: LDAP read only user
+

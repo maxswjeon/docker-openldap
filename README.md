@@ -36,6 +36,7 @@ Available environment variables are listed here
 
 These environment variables are used to initialize the LDAP server. Required and used only for new LDAP server.
 
+- **LDAP_ORGANIZATION**: Organization name. Default: `Example Inc.`
 - **LDAP_DOMAIN**: LDAP Domain. Defaults to `example.org`
 - **LDAP_PORT**: LDAP Port. Defaults to `389`
 - **LDAPS_PORT**: LDAPS Port. Defaults to `636`
