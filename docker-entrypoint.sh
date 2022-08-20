@@ -225,6 +225,17 @@ if [ ! -f /.config ]; then
         fi
       done
 
+      for f in $(find /custom/schema -name \*.ldif -type f | sort); do
+        SCHEMA=$(basename "$f" .ldif)
+        ADD_SCHEMA=$(is_new_schema "$SCHEMA")
+
+        if [ "$ADD_SCHEMA" -eq 1 ]; then
+          ldapadd -c -Y EXTERNAL -Q -H ldapi:/// -f "$f" 2>&1
+        else
+          echo "[INFO] Custom schema $f already exists"
+        fi
+      done
+
       LDAP_CONFIG_PASSWORD_ENCRYPTED=$(slappasswd -s "$LDAP_CONFIG_PASSWORD")
       sed -i "s|{{ LDAP_CONFIG_PASSWORD_ENCRYPTED }}|${LDAP_CONFIG_PASSWORD_ENCRYPTED}|g" /config/bootstrap/ldif/01-config-password.ldif
       sed -i "s|{{ LDAP_BASE_DN }}|${LDAP_BASE_DN}|g" /config/bootstrap/ldif/02-security.ldif
