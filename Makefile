@@ -24,7 +24,7 @@ release: build tag push push-latest
 
 git-tag-version:
 	git tag -a v$(VERSION) -m "Release v$(VERSION)"
-	git push origin $(VERSION)
+	git push origin v$(VERSION)
 
 run:
 	docker run -p 389:389 -p 636:636 --rm -v certificates:/certificates -v $(shell pwd)/dhparam:/dhparam -it --env-file .env $(NAME):$(VERSION)

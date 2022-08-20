@@ -207,6 +207,11 @@ if [ ! -f /.config ]; then
         echo "[INFO] Adding schema $f"
       done
 
+      for f in $(find /custom/schema -name \*.schema -type f | sort); do
+        SCHEMAS="$SCHEMAS $f"
+        echo "[INFO] Adding custom schema $f"
+      done
+
       /schema-to-ldif.sh "$SCHEMAS"
 
       for f in $(find /config/bootstrap/schema -name \*.ldif -type f | sort); do
